@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+# Generates an RSS feed for a list of audio files, for consumption by Overcast
+# and other podcast players.
+#
+# Usage:   make-audio-feed TITLE BASE_URL FILE...
+# Example: (cd directory && make-audio-feed 'My Audio Files' 'https://your.server/directory/' * > .feed.rss)
+
+set -eu -o pipefail
+
+# https://gist.github.com/cdown/1163649#gistcomment-2157284
+urlencode() {
+    local LANG=C i c e=''
+    for ((i=0;i<${#1};i++)); do
+        c=${1:$i:1}
+        [[ "$c" =~ [a-zA-Z0-9\.\~\_\-] ]] || printf -v c '%%%02X' "'$c"
+        e+="$c"
+    done
+    echo "$e"
+}
+
+entity-escape() {
+	sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&#39;/g'
+}
+
+title=$1
+shift
+
+echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<rss xmlns:itunes=\"http://www.itunes.com/dtds/podcast-1.0.dtd\" version=\"2.0\">
+    <channel>
+        <title>$title</title>
+        <description>$title</description>
+        <link></link>
+"
+
+base_url=$1
+shift
+
+for f in "$@"; do
+    # Use the file's mtime for the pubDate
+    pubTimeEpoch=$(stat -c %Y -- "$f")
+    pubDate=$(date --date="@$pubTimeEpoch" '+%a, %d %b %Y %H:%M:%S %z')
+	echo "\
+        <item>
+            <title>$(echo -n $f | entity-escape)</title>
+            <guid>$(echo -n $f | entity-escape)</guid>
+            <enclosure url=\"${base_url}$(urlencode "$f" | entity-escape)\" type=\"audio/mp3\" />
+            <pubDate>$pubDate</pubDate>
+        </item>"
+done
+
+echo "\
+    </channel>
+</rss>
+"
