@@ -41,7 +41,7 @@ for f in "$@"; do
     # Use the file's mtime for the pubDate
     pubTimeEpoch=$(stat -c %Y -- "$f")
     pubDate=$(date --date="@$pubTimeEpoch" '+%a, %d %b %Y %H:%M:%S %z')
-	echo "\
+    echo "\
         <item>
             <title>$(echo -n $f | entity-escape)</title>
             <guid>$(echo -n $f | entity-escape)</guid>
